@@ -1,10 +1,16 @@
 package main
 
+import "C"
 import (
 	"Avito_go/internal/config"
+	"Avito_go/internal/http-server/gocache"
+	"Avito_go/internal/http-server/handlers"
 	"Avito_go/internal/lib/logger/postgres"
 	"Avito_go/internal/storage/postgresql"
+
+	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 )
 
@@ -40,7 +46,26 @@ func main() {
 
 	_ = storage
 
-	//router := chi.NewRouter()
+	//gocache.Cah = cache.New(0, 0)
+
+	if err := gocache.LoadDataIntoCache(); err != nil {
+		fmt.Println("Failed to load data into cache:", err)
+		return
+	}
+
+	cachedData, found := gocache.Cah.Get("4 438")
+	if found {
+		fmt.Println("Data found in cache:")
+		fmt.Println(string(cachedData.([]byte)))
+	} else {
+		fmt.Println("Data not found in cache")
+	}
+
+	http.HandleFunc("/user_banner", handlers.GetUserBanner)
+	err = http.ListenAndServe(":8085", nil)
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
 
 }
 

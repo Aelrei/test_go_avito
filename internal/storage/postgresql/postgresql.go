@@ -8,7 +8,6 @@ import (
 	"fmt"
 	_ "github.com/lib/pq"
 	"math/rand/v2"
-	"os"
 	"strconv"
 	"time"
 )
@@ -17,20 +16,12 @@ type Storage struct {
 	db *sql.DB
 }
 
-var (
-	host     = os.Getenv("DB_HOST")
-	user     = os.Getenv("DB_USER")
-	password = os.Getenv("DB_PASSWORD")
-	dbname   = os.Getenv("DB_NAME")
-	port     = os.Getenv("DB_PORT")
-)
-
 func New(storagePath string) (*Storage, error) {
 	const fn = "storage.postgresql.New"
 
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+		storage.Host, storage.Port, storage.User, storage.Password, storage.Dbname)
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
@@ -81,7 +72,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
 		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
+		storage.Host, storage.Port, storage.User, storage.Password, storage.Dbname)
 
 	db, err := sql.Open("postgres", psqlInfo)
 	if err != nil {
@@ -168,26 +159,4 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 	}
 
 	return &Storage{db: db}, nil
-}
-
-func (s *Storage) GetURL(alias string) (string, error) {
-	const op = "storage.sqlite.GetURL"
-
-	stmt, err := s.db.Prepare("SELECT url FROM url WHERE alias = ?")
-	if err != nil {
-		return "", fmt.Errorf("%s: prepare statement: %w", op, err)
-	}
-
-	var resURL string
-
-	err = stmt.QueryRow(alias).Scan(&resURL)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", storage.ErrTagNotFound
-		}
-
-		return "", fmt.Errorf("%s: execute statement: %w", op, err)
-	}
-
-	return resURL, nil
 }
