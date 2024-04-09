@@ -14,11 +14,8 @@ var (
 )
 
 func LoadDataIntoCache() error {
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		storage.Host, storage.Port, storage.User, storage.Password, storage.Dbname)
 
-	db, err := sql.Open("postgres", psqlInfo)
+	db, err := sql.Open("postgres", storage.PsqlInfo)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}

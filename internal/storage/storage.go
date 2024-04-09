@@ -2,8 +2,13 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"os"
 )
+
+var PsqlInfo = fmt.Sprintf("host=%s port=%s user=%s "+
+	"password=%s dbname=%s sslmode=disable",
+	Host, Port, User, Password, Dbname)
 
 var (
 	Host     = os.Getenv("DB_HOST")
@@ -12,6 +17,12 @@ var (
 	Dbname   = os.Getenv("DB_NAME")
 	Port     = os.Getenv("DB_PORT")
 )
+
+type BannerContent struct {
+	Title string `json:"title"`
+	Text  string `json:"text"`
+	URL   string `json:"url"`
+}
 
 type Banner struct {
 	Id         int    `json:"banner_id"`

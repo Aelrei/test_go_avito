@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-func GetUserBanner(w http.ResponseWriter, r *http.Request) {
+func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		tagID := r.URL.Query().Get("tag_id")
@@ -39,12 +39,35 @@ func GetUserBanner(w http.ResponseWriter, r *http.Request) {
 				if errors.Is(err, sql.ErrNoRows) {
 					w.WriteHeader(http.StatusNotFound)
 				} else {
-					w.WriteHeader(http.StatusInternalServerError)
+					sendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 				}
 				return
 			}
-			jsonBytes, _ := json.MarshalIndent(banner, "", " ")
-			jsonBytes = append(jsonBytes, '\n')
+			jsonBytes := append([]byte(banner), '\n')
+
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			_, err = w.Write(jsonBytes)
+			if err != nil {
+				return
+			}
+		} else if useLastRevision == "false" {
+			banner, found := gocache.GetCache(tagID, featureID)
+			if found != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			var data map[string]interface{}
+			var ans storage.Banner
+			err = json.Unmarshal(banner.([]byte), &ans)
+			str := []byte(ans.Content)
+			err = json.Unmarshal([]byte(str), &data)
+			if err != nil {
+				sendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+				return
+			}
+			formattedJSON, err := json.MarshalIndent(data, "", "  ")
+			jsonBytes := append(formattedJSON, '\n')
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
@@ -54,55 +77,21 @@ func GetUserBanner(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return
 			}
-
-		} else if useLastRevision == "false" {
-			banner, found := gocache.GetCache(tagID, featureID)
-			if found != nil {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-
-			var ans storage.Banner
-			err = json.Unmarshal(banner.([]byte), &ans)
-			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					w.WriteHeader(http.StatusNotFound)
-				} else {
-					w.WriteHeader(http.StatusInternalServerError)
-				}
-				return
-			}
-			jsonBytes, _ := json.MarshalIndent(ans, "", " ")
-			jsonBytes = append(jsonBytes, '\n')
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "application/json")
-			_, err := w.Write(jsonBytes)
-			if err != nil {
-				return
-			}
 		}
 	}
 }
 
-func GetBannerByTagAndFeature(tagID, featureID string) (*storage.Banner, error) {
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		storage.Host, storage.Port, storage.User, storage.Password, storage.Dbname)
+//func GetAllBannersHandler()
 
-	db, err := sql.Open("postgres", psqlInfo)
+func GetBannerByTagAndFeature(tagID, featureID string) (string, error) {
+	db, err := sql.Open("postgres", storage.PsqlInfo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return "", fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.Close()
 
 	query := `
-		SELECT b.id, b.content, b.feature_id, t.id, b.active, b.created_at, b.updated_at 
+		SELECT b.content
 		FROM features as f, banners as b, banner_tag as bt, tags as t
 		WHERE t.id = bt.tag_id 
 		  AND bt.banner_id = b.id 
@@ -113,13 +102,24 @@ func GetBannerByTagAndFeature(tagID, featureID string) (*storage.Banner, error) 
 
 	rows := db.QueryRow(query, tagID, featureID)
 
-	var banner storage.Banner
-	err = rows.Scan(&banner.Id, &banner.Content, &banner.Feature_id, &banner.Tag_id, &banner.Active, &banner.Created_at, &banner.Updated_at)
+	var content string
+	err = rows.Scan(&content)
 	if err != nil {
-		return nil, fmt.Errorf("error during scanning result set: %w", err)
+		return "", fmt.Errorf("error during scanning result set: %w", err)
 	}
 
-	return &banner, nil
+	var data map[string]interface{}
+	err = json.Unmarshal([]byte(content), &data)
+	if err != nil {
+		return "", fmt.Errorf("error unmarshalling content: %w", err)
+	}
+
+	formattedJSON, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("error formatting JSON: %w", err)
+	}
+
+	return string(formattedJSON), nil
 }
 
 func validateID(id string) (int, error) {
@@ -137,9 +137,10 @@ func sendErrorResponse(w http.ResponseWriter, status int, message string) {
 	w.WriteHeader(status)
 	errorMessage := map[string]string{"error": message}
 	jsonBytes, err := json.Marshal(errorMessage)
+	jsonBytes, err = json.MarshalIndent(errorMessage, "", " ")
 	jsonBytes = append(jsonBytes, '\n')
 	if err != nil {
-		http.Error(w, "Error during request: ", http.StatusInternalServerError)
+		http.Error(w, "Error during request ", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

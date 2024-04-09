@@ -3,6 +3,7 @@ package postgresql
 import (
 	"Avito_go/internal/storage"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
@@ -18,11 +19,7 @@ type Storage struct {
 func New(storagePath string) (*Storage, error) {
 	const fn = "storage.postgresql.New"
 
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		storage.Host, storage.Port, storage.User, storage.Password, storage.Dbname)
-
-	db, err := sql.Open("postgres", psqlInfo)
+	db, err := sql.Open("postgres", storage.PsqlInfo)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
@@ -30,7 +27,7 @@ func New(storagePath string) (*Storage, error) {
 	gen, err := db.Exec(`
         CREATE TABLE IF NOT EXISTS banners (
             id SERIAL PRIMARY KEY,
-            content VARCHAR(255) NOT NULL,
+            content JSONB NOT NULL,
             feature_id INT NOT NULL,
             active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -53,8 +50,6 @@ func New(storagePath string) (*Storage, error) {
             banner_id INT,
             tag_id INT,
             PRIMARY KEY (banner_id, tag_id)
---             FOREIGN KEY (banner_id) REFERENCES banners(id) ON DELETE CASCADE,
---             FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
         );
     `)
 
@@ -69,11 +64,7 @@ func New(storagePath string) (*Storage, error) {
 func UpdateStorage(storagePath string) (*Storage, error) {
 	const fn = "storage.postgresql.Update"
 
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		storage.Host, storage.Port, storage.User, storage.Password, storage.Dbname)
-
-	db, err := sql.Open("postgres", psqlInfo)
+	db, err := sql.Open("postgres", storage.PsqlInfo)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
@@ -128,13 +119,18 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 `
 
 	for id := 1; id < 1000; id++ {
-		content := "content" + strconv.Itoa(id)
+		content := storage.BannerContent{
+			Title: "some_title" + strconv.Itoa(id),
+			Text:  "some_text" + strconv.Itoa(id),
+			URL:   "some_url" + strconv.Itoa(id),
+		}
+		contentJSON, _ := json.Marshal(content)
 		featureID := rand.IntN(1000) + 1
 		active := "true"
 		createdAt := time.Now().Format("2006-01-02 15:04:05")
 		updatedAt := time.Now().Format("2006-01-02 15:04:05")
 
-		_, err := db.Exec(sqlStatementBanners, id, content, featureID, active, createdAt, updatedAt)
+		_, err := db.Exec(sqlStatementBanners, id, contentJSON, featureID, active, createdAt, updatedAt)
 		if err != nil {
 			fmt.Println("Error during request:", err)
 			panic(err)
