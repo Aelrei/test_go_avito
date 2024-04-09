@@ -7,7 +7,6 @@ import (
 	"Avito_go/internal/http-server/handlers"
 	"Avito_go/internal/lib/logger/postgres"
 	"Avito_go/internal/storage/postgresql"
-
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -46,14 +45,13 @@ func main() {
 
 	_ = storage
 
-	//gocache.Cah = cache.New(0, 0)
-
 	if err := gocache.LoadDataIntoCache(); err != nil {
 		fmt.Println("Failed to load data into cache:", err)
 		return
 	}
 
-	cachedData, found := gocache.Cah.Get("4 438")
+	cachedData, found := gocache.Cah.Get("134 725")
+
 	if found {
 		fmt.Println("Data found in cache:")
 		fmt.Println(string(cachedData.([]byte)))

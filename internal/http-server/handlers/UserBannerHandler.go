@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 )
 
 func GetUserBanner(w http.ResponseWriter, r *http.Request) {
@@ -15,13 +16,24 @@ func GetUserBanner(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		tagID := r.URL.Query().Get("tag_id")
 		featureID := r.URL.Query().Get("feature_id")
-		useLastVersion := r.URL.Query().Get("use_last_version")
+		useLastRevision := r.URL.Query().Get("use_last_revision")
 
-		if useLastVersion == "" {
-			useLastVersion = "false"
+		if useLastRevision == "" {
+			useLastRevision = "false"
 		}
 
-		if useLastVersion == "true" {
+		_, err := validateID(tagID)
+		if err != nil {
+			sendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		_, err = validateID(featureID)
+		if err != nil {
+			sendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if useLastRevision == "true" {
 			banner, err := GetBannerByTagAndFeature(tagID, featureID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
@@ -38,10 +50,24 @@ func GetUserBanner(w http.ResponseWriter, r *http.Request) {
 			}
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write(jsonBytes)
-		} else {
-			banner, err := gocache.GetCache(tagID, featureID)
-			banner := fmt.Sprintf(string(banner.([]byte)))
+			_, err = w.Write(jsonBytes)
+			if err != nil {
+				return
+			}
+
+		} else if useLastRevision == "false" {
+			banner, found := gocache.GetCache(tagID, featureID)
+			if found != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			var ans storage.Banner
+			err = json.Unmarshal(banner.([]byte), &ans)
+			if err != nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					w.WriteHeader(http.StatusNotFound)
@@ -50,14 +76,17 @@ func GetUserBanner(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-			jsonBytes, _ := json.MarshalIndent(banner, "", " ")
+			jsonBytes, _ := json.MarshalIndent(ans, "", " ")
 			jsonBytes = append(jsonBytes, '\n')
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write(jsonBytes)
+			_, err := w.Write(jsonBytes)
+			if err != nil {
+				return
+			}
 		}
 	}
 }
@@ -91,4 +120,28 @@ func GetBannerByTagAndFeature(tagID, featureID string) (*storage.Banner, error) 
 	}
 
 	return &banner, nil
+}
+
+func validateID(id string) (int, error) {
+	parsedID, err := strconv.Atoi(id)
+	if err != nil || parsedID <= 0 {
+		return 0, errors.New("not correct one of parameters")
+	}
+	if parsedID <= 0 {
+		return 0, errors.New("not correct one of parameters")
+	}
+	return parsedID, nil
+}
+
+func sendErrorResponse(w http.ResponseWriter, status int, message string) {
+	w.WriteHeader(status)
+	errorMessage := map[string]string{"error": message}
+	jsonBytes, err := json.Marshal(errorMessage)
+	jsonBytes = append(jsonBytes, '\n')
+	if err != nil {
+		http.Error(w, "Error during request: ", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonBytes)
 }

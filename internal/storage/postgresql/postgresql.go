@@ -3,7 +3,6 @@ package postgresql
 import (
 	"Avito_go/internal/storage"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
@@ -31,7 +30,7 @@ func New(storagePath string) (*Storage, error) {
 	gen, err := db.Exec(`
         CREATE TABLE IF NOT EXISTS banners (
             id SERIAL PRIMARY KEY,
-            content JSONB NOT NULL,
+            content VARCHAR(255) NOT NULL,
             feature_id INT NOT NULL,
             active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -129,7 +128,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 `
 
 	for id := 1; id < 1000; id++ {
-		content, _ := json.Marshal("content" + strconv.Itoa(id))
+		content := "content" + strconv.Itoa(id)
 		featureID := rand.IntN(1000) + 1
 		active := "true"
 		createdAt := time.Now().Format("2006-01-02 15:04:05")
@@ -149,7 +148,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 	`
 	for id := 1; id < 1000; id++ {
 		for i := 0; i <= rand.IntN(3)+1; i++ {
-			randId := rand.IntN(1000) + 1
+			randId := rand.IntN(4) + id
 			_, err := db.Exec(sqlBannerTag, id, randId)
 			if err != nil {
 				fmt.Println("Error during request:", err)
