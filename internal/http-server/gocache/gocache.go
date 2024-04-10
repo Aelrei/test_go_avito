@@ -4,7 +4,6 @@ import (
 	"Avito_go/internal/storage"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/patrickmn/go-cache"
 )
@@ -48,13 +47,4 @@ func LoadDataIntoCache() error {
 	}
 
 	return nil
-}
-
-func GetCache(TagId, FeatureId string) (interface{}, error) {
-	str := fmt.Sprintf("%s %s", TagId, FeatureId)
-	cachedValue, found := Cah.Get(str)
-	if !found {
-		return nil, errors.New("value not found in cache")
-	}
-	return cachedValue, nil
 }

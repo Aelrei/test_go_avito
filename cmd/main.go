@@ -91,6 +91,7 @@ func main() {
 	router := http.NewServeMux()
 
 	router.Handle("/user_banner", access.AuthMiddlewareUserAdmin(http.HandlerFunc(handlers.GetUserBannerHandler)))
+	router.Handle("/banner", access.AuthMiddlewareAdmin(http.HandlerFunc(handlers.GetAllBannersHandler)))
 
 	//http.HandleFunc("/user_banner", handlers.GetUserBannerHandler)
 	err = http.ListenAndServe(":8085", router)
