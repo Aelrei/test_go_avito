@@ -1,10 +1,8 @@
-package access
+package accessHTTP
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -43,14 +41,6 @@ func AuthMiddlewareAdmin(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-func ValidateID(id string) (int, error) {
-	parsedID, err := strconv.Atoi(id)
-	if err != nil || parsedID <= 0 {
-		return 0, errors.New("not correct one of parameters")
-	}
-	return parsedID, nil
 }
 
 func SendErrorResponse(w http.ResponseWriter, status int, message string) {

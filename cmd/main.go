@@ -3,8 +3,8 @@ package main
 import "C"
 import (
 	"Avito_go/internal/config"
-	"Avito_go/internal/http-server/access"
-	"Avito_go/internal/http-server/gocache"
+	"Avito_go/internal/getters/gocache"
+	"Avito_go/internal/http-server/accessHTTP"
 	"Avito_go/internal/http-server/handlers"
 	"Avito_go/internal/lib/logger/postgres"
 	storage2 "Avito_go/internal/storage"
@@ -90,8 +90,8 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.Handle("/user_banner", access.AuthMiddlewareUserAdmin(http.HandlerFunc(handlers.GetUserBannerHandler)))
-	router.Handle("/banner", access.AuthMiddlewareAdmin(http.HandlerFunc(handlers.GetAllBannersHandler)))
+	router.Handle("/user_banner", accessHTTP.AuthMiddlewareUserAdmin(http.HandlerFunc(handlers.GetUserBannerHandler)))
+	router.Handle("/banner", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(handlers.GetAllBannersHandler)))
 
 	//http.HandleFunc("/user_banner", handlers.GetUserBannerHandler)
 	err = http.ListenAndServe(":8085", router)

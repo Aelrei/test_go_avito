@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"Avito_go/internal/http-server/access"
-	"Avito_go/internal/http-server/getters"
+	"Avito_go/internal/getters"
+	"Avito_go/internal/http-server/accessHTTP"
 	"Avito_go/internal/storage"
+	"Avito_go/internal/storage/accessDB"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -21,14 +22,14 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 			useLastRevision = "false"
 		}
 
-		_, err := access.ValidateID(tagID)
+		_, err := accessDB.ValidateID(tagID)
 		if err != nil {
-			access.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		_, err = access.ValidateID(featureID)
+		_, err = accessDB.ValidateID(featureID)
 		if err != nil {
-			access.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -38,7 +39,7 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 				if errors.Is(err, sql.ErrNoRows) {
 					w.WriteHeader(http.StatusNotFound)
 				} else {
-					access.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+					accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 				}
 				return
 			}
@@ -62,7 +63,7 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 			str := []byte(ans.Content)
 			err = json.Unmarshal([]byte(str), &data)
 			if err != nil {
-				access.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+				accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 				return
 			}
 			formattedJSON, err := json.MarshalIndent(data, "", "  ")
@@ -88,29 +89,43 @@ func GetAllBannersHandler(w http.ResponseWriter, r *http.Request) {
 		limit := r.URL.Query().Get("limit")
 		offset := r.URL.Query().Get("offset")
 
-		_, err := access.ValidateID(tagID)
+		if tagID == "" && featureID != "" {
+			_, err := accessDB.ValidateID(featureID)
+			if err != nil {
+				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		} else if tagID != "" && featureID == "" {
+			_, err := accessDB.ValidateID(tagID)
+			if err != nil {
+				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		} else {
+			_, err := accessDB.ValidateID(tagID)
+			if err != nil {
+				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			_, err = accessDB.ValidateID(featureID)
+			if err != nil {
+				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
+		}
+
+		_, err := accessDB.ValidateLimitOffset(limit)
 		if err != nil {
-			access.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		_, err = access.ValidateID(featureID)
+		_, err = accessDB.ValidateLimitOffset(offset)
 		if err != nil {
-			access.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		_, err = access.ValidateID(limit)
-		if err != nil {
-			access.SendErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		_, err = access.ValidateID(offset)
-		if err != nil {
-			access.SendErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		banner, err := getters.GetAllBanners(tagID, featureID)
+		banner, err := getters.GetAllBanners(tagID, featureID, limit, offset)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				w.WriteHeader(http.StatusNotFound)

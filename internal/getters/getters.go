@@ -1,7 +1,7 @@
 package getters
 
 import (
-	"Avito_go/internal/http-server/gocache"
+	"Avito_go/internal/getters/gocache"
 	"Avito_go/internal/storage"
 	"database/sql"
 	"encoding/json"
@@ -48,7 +48,7 @@ func GetBannerByTagAndFeature(tagID, featureID string) (string, error) {
 	return string(formattedJSON), nil
 }
 
-func GetAllBanners(tagID, featureID string) ([]*storage.AllBanner, error) {
+func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner, error) {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		storage.Host, storage.Port, storage.User, storage.Password, storage.Dbname)
 
@@ -64,10 +64,31 @@ func GetAllBanners(tagID, featureID string) ([]*storage.AllBanner, error) {
         WHERE t.id = bt.tag_id 
           AND bt.banner_id = b.id 
           AND f.id = b.feature_id  
-          AND b.feature_id = $1;
     `
+	if featureID != "" && tagID == "" {
+		query = query + ` AND b.feature_id = $1 `
+	} else if tagID != "" && featureID == "" {
+		query = query + ` AND t.id = $1 `
+	} else if featureID != "" && tagID != "" {
+		query = query + ` AND b.feature_id = $1 AND t.id = $2 `
+	}
 
-	rows, err := db.Query(query, featureID)
+	if featureID != "" && tagID != "" {
+		query = query + ` LIMIT $3 OFFSET $4;`
+	} else {
+		query = query + ` LIMIT $2 OFFSET $3;`
+	}
+
+	var rows *sql.Rows
+	if featureID != "" && tagID != "" {
+		rows, err = db.Query(query, featureID, tagID, limit, offset)
+	} else if featureID != "" {
+		rows, err = db.Query(query, featureID, limit, offset)
+	} else if tagID != "" {
+		rows, err = db.Query(query, tagID, limit, offset)
+	} else {
+		return nil, fmt.Errorf("at least one of featureID or tagID must be provided")
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
