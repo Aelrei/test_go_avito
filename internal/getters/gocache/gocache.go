@@ -43,7 +43,7 @@ func LoadDataIntoCache() error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal data to JSON: %w", err)
 		}
-		Cah.Set(fmt.Sprintf("%d %d", banner.Tag_id, banner.Feature_id), jsonData, cache.NoExpiration) // NoExpiration - без истечения срока действия
+		Cah.Set(fmt.Sprintf("%d %d", banner.Tag_id, banner.Feature_id), jsonData, cache.NoExpiration)
 	}
 
 	return nil

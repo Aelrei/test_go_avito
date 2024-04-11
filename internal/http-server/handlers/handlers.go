@@ -11,6 +11,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +86,7 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetAllBannersHandler(w http.ResponseWriter, r *http.Request) {
+func GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		tagID := r.URL.Query().Get("tag_id")
@@ -129,7 +131,10 @@ func GetAllBannersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		banner, err := getters.GetAllBanners(tagID, featureID, limit, offset)
-		if err != nil {
+		if banner == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		} else if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
@@ -169,24 +174,59 @@ func GetAllBannersHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Вставка нового баннера в базу данных
 		newBannerID, err := setters.InsertBanner(data, db)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		// Формирование ответа с ID нового баннера
 		response := map[string]int{"banner_id": newBannerID}
 		responseBody, err := json.Marshal(response)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 			return
 		}
-
-		// Отправка ответа
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		w.Write(responseBody)
+		jsonBytes := append(responseBody, '\n')
+		w.Write(jsonBytes)
+	}
+}
+
+func PatchBannerHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "PATCH":
+		db, err := sql.Open("postgres", storage.PsqlInfo)
+		if err != nil {
+			return
+		}
+		defer db.Close()
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+			return
+		}
+		parts := strings.Split(r.URL.Path, "/")
+		id, err := strconv.Atoi(parts[len(parts)-1])
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		var data map[string]interface{}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		err = setters.ChangeInfoBanner(data, db, id)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 	}
 }

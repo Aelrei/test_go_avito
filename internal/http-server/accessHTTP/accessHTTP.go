@@ -27,7 +27,10 @@ func AuthMiddlewareUserAdmin(next http.Handler) http.Handler {
 func AuthMiddlewareAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := strings.Split(r.Header.Get("token"), " ")
-		if len(token) != 1 || token[0] == "" {
+		if len(token) != 1 {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		} else if token[0] == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		} else if token[0] != "admin_token" {

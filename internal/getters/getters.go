@@ -67,7 +67,7 @@ func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner
 	} else if tagID != "" && featureID == "" {
 		query = query + ` AND t.id = $1 `
 	} else if featureID != "" && tagID != "" {
-		query = query + ` AND b.feature_id = $1 AND t.id = $2 `
+		query = query + ` AND f.id = $1 AND t.id = $2 `
 	}
 
 	if featureID != "" && tagID != "" {
@@ -79,9 +79,9 @@ func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner
 	var rows *sql.Rows
 	if featureID != "" && tagID != "" {
 		rows, err = db.Query(query, featureID, tagID, limit, offset)
-	} else if featureID != "" {
+	} else if featureID != "" && tagID == "" {
 		rows, err = db.Query(query, featureID, limit, offset)
-	} else if tagID != "" {
+	} else if tagID != "" && featureID == "" {
 		rows, err = db.Query(query, tagID, limit, offset)
 	} else {
 		return nil, fmt.Errorf("at least one of featureID or tagID must be provided")
@@ -116,7 +116,6 @@ func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner
 		}
 	}
 
-	// Преобразуем карту в список баннеров
 	var banners []*storage.AllBanner
 	for _, b := range bannerMap {
 		banners = append(banners, b)

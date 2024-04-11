@@ -27,13 +27,13 @@ type BannerContent struct {
 }
 
 type Banner struct {
-	Id         int    `json:"banner_id"`
-	Content    string `json:"content"`
-	Feature_id int    `json:"feature_id"`
-	Tag_id     int    `json:"tag_id"`
-	Active     bool   `json:"is_active"`
-	Created_at string `json:"created_at"`
-	Updated_at string `json:"updated_at"`
+	Id         int    `json:"banner_id,omitempty"`
+	Content    string `json:"content,omitempty"`
+	Feature_id int    `json:"feature_id,omitempty"`
+	Tag_id     int    `json:"tag_id,omitempty"`
+	Active     bool   `json:"is_active,omitempty"`
+	Created_at string `json:"created_at,omitempty"`
+	Updated_at string `json:"updated_at,omitempty"`
 }
 
 type AllBanner struct {
