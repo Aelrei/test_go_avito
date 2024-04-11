@@ -44,15 +44,12 @@ func GetBannerByTagAndFeature(tagID, featureID string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error formatting JSON: %w", err)
 	}
-	//fmt.Println(string(formattedJSON))
 	return string(formattedJSON), nil
 }
 
 func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner, error) {
-	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		storage.Host, storage.Port, storage.User, storage.Password, storage.Dbname)
 
-	db, err := sql.Open("postgres", psqlInfo)
+	db, err := sql.Open("postgres", storage.PsqlInfo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -103,12 +100,9 @@ func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
 
-		// Проверяем, существует ли баннер с данным ID в карте
 		if b, ok := bannerMap[banner.Id]; ok {
-			// Если баннер уже существует, добавляем Tag_id в его массив Tag_ids
 			b.Tag_ids = append(b.Tag_ids, banner.Tag_id)
 		} else {
-			// Иначе создаем новый баннер и добавляем его в карту
 			newBanner := &storage.AllBanner{
 				Id:         banner.Id,
 				Content:    banner.Content,
@@ -142,4 +136,14 @@ func GetCache(TagId, FeatureId string) (interface{}, error) {
 		return nil, errors.New("value not found in cache")
 	}
 	return cachedValue, nil
+}
+
+func GetMaxBannerIdFromDB(db *sql.DB) (int, error) {
+	var maxId int
+	query := "SELECT MAX(id) FROM banners"
+	err := db.QueryRow(query).Scan(&maxId)
+	if err != nil {
+		return 0, fmt.Errorf("error getting max Id from database: %v", err)
+	}
+	return maxId, nil
 }

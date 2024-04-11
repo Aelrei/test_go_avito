@@ -3,11 +3,13 @@ package handlers
 import (
 	"Avito_go/internal/getters"
 	"Avito_go/internal/http-server/accessHTTP"
+	"Avito_go/internal/setters"
 	"Avito_go/internal/storage"
 	"Avito_go/internal/storage/accessDB"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 )
 
@@ -69,7 +71,8 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 			formattedJSON, err := json.MarshalIndent(data, "", "  ")
 			jsonBytes := append(formattedJSON, '\n')
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
+				accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
@@ -130,14 +133,15 @@ func GetAllBannersHandler(w http.ResponseWriter, r *http.Request) {
 			if errors.Is(err, sql.ErrNoRows) {
 				w.WriteHeader(http.StatusNotFound)
 			} else {
-				w.WriteHeader(http.StatusInternalServerError)
+				accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 			}
 			return
 		}
 		jsonBytes, _ := json.MarshalIndent(banner, "", " ")
 		jsonBytes = append(jsonBytes, '\n')
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -146,6 +150,43 @@ func GetAllBannersHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
+	case "POST":
+		db, err := sql.Open("postgres", storage.PsqlInfo)
+		if err != nil {
+			return
+		}
+		defer db.Close()
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+			return
+		}
 
+		var data map[string]interface{}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Вставка нового баннера в базу данных
+		newBannerID, err := setters.InsertBanner(data, db)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Формирование ответа с ID нового баннера
+		response := map[string]int{"banner_id": newBannerID}
+		responseBody, err := json.Marshal(response)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+			return
+		}
+
+		// Отправка ответа
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		w.Write(responseBody)
 	}
 }

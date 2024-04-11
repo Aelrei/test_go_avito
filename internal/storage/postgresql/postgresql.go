@@ -31,7 +31,8 @@ func New(storagePath string) (*Storage, error) {
             feature_id INT NOT NULL,
             active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT unique_banner_feature UNIQUE (id, feature_id)
                                            
         );
 
@@ -75,7 +76,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		ON CONFLICT (id) DO NOTHING
 		RETURNING id;`
 
-	for id := 1; id < 1000; id++ {
+	for id := 1; id < storage.NumberBanners; id++ {
 		value := "tag" + strconv.Itoa(id)
 		err = db.QueryRow(sqlStatementTags, id, value).Scan(&id)
 
@@ -97,7 +98,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		RETURNING id;
 		`
 
-	for id := 1; id < 1000; id++ {
+	for id := 1; id < storage.NumberBanners; id++ {
 		value := "feature" + strconv.Itoa(id)
 		err = db.QueryRow(sqlStatementFeatures, id, value).Scan(&id)
 
@@ -118,7 +119,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
     RETURNING id;
 `
 
-	for id := 1; id < 1000; id++ {
+	for id := 1; id < storage.NumberBanners; id++ {
 		content := storage.BannerContent{
 			Title: "some_title" + strconv.Itoa(id),
 			Text:  "some_text" + strconv.Itoa(id),
@@ -126,7 +127,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		}
 		contentJSON, _ := json.Marshal(content)
 		for i := 0; i <= rand.IntN(3)+1; i++ {
-			featureID := rand.IntN(7) + id - 2
+			featureID := rand.IntN(7) + id
 			active := "true"
 			createdAt := time.Now().Format("2006-01-02 15:04:05")
 			updatedAt := time.Now().Format("2006-01-02 15:04:05")
@@ -144,9 +145,9 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 	   VALUES ($1, $2)
 	   ON CONFLICT (banner_id, tag_id) DO NOTHING;
 	`
-	for id := 1; id < 1000; id++ {
+	for id := 1; id < storage.NumberBanners; id++ {
 		for i := 0; i <= rand.IntN(3)+1; i++ {
-			randId := rand.IntN(4) + id - 3
+			randId := rand.IntN(4) + id + 1
 			_, err := db.Exec(sqlBannerTag, id, randId)
 			if err != nil {
 				fmt.Println("Error during request:", err)
