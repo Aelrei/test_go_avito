@@ -34,6 +34,16 @@ type Banner struct {
 	Updated_at string `json:"updated_at"`
 }
 
+type AllBanner struct {
+	Id         int    `json:"banner_id"`
+	Content    string `json:"content"`
+	Feature_id int    `json:"feature_id"`
+	Tag_ids    []int  `json:"tag_ids"`
+	Active     bool   `json:"is_active"`
+	Created_at string `json:"created_at"`
+	Updated_at string `json:"updated_at"`
+}
+
 var (
 	ErrTagNotFound     = errors.New("tag not found")
 	ErrFeatureNotFound = errors.New("feature not found")

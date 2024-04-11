@@ -125,15 +125,17 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 			URL:   "some_url" + strconv.Itoa(id),
 		}
 		contentJSON, _ := json.Marshal(content)
-		featureID := rand.IntN(1000) + 1
-		active := "true"
-		createdAt := time.Now().Format("2006-01-02 15:04:05")
-		updatedAt := time.Now().Format("2006-01-02 15:04:05")
+		for i := 0; i <= rand.IntN(3)+1; i++ {
+			featureID := rand.IntN(7) + id - 2
+			active := "true"
+			createdAt := time.Now().Format("2006-01-02 15:04:05")
+			updatedAt := time.Now().Format("2006-01-02 15:04:05")
 
-		_, err := db.Exec(sqlStatementBanners, id, contentJSON, featureID, active, createdAt, updatedAt)
-		if err != nil {
-			fmt.Println("Error during request:", err)
-			panic(err)
+			_, err := db.Exec(sqlStatementBanners, id, contentJSON, featureID, active, createdAt, updatedAt)
+			if err != nil {
+				fmt.Println("Error during request:", err)
+				panic(err)
+			}
 		}
 	}
 
@@ -144,7 +146,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 	`
 	for id := 1; id < 1000; id++ {
 		for i := 0; i <= rand.IntN(3)+1; i++ {
-			randId := rand.IntN(4) + id
+			randId := rand.IntN(4) + id - 3
 			_, err := db.Exec(sqlBannerTag, id, randId)
 			if err != nil {
 				fmt.Println("Error during request:", err)

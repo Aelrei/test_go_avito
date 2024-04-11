@@ -111,7 +111,6 @@ func GetAllBannersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		banner, err := getters.GetAllBanners(tagID, featureID)
-		//fmt.Println(banner)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				w.WriteHeader(http.StatusNotFound)
