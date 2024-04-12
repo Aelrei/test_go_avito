@@ -14,16 +14,17 @@ var (
 
 func LoadDataIntoCache() error {
 
+	Cah.Flush()
+
 	db, err := sql.Open("postgres", storage.PsqlInfo)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.Close()
 
-	query := `SELECT b.id, b.content, b.feature_id, t.id as tag_id, b.active, b.created_at, b.updated_at
-		FROM features as f, banners as b, banner_tag as bt, tags as t
-		WHERE t.id = bt.tag_id
-		  AND bt.banner_id = b.id
+	query := `SELECT b.id, b.content, b.feature_id, bt.tag_id as tag_id, b.active, b.created_at, b.updated_at
+		FROM features as f, banners as b, banner_tag as bt
+		WHERE bt.banner_id = b.id
 		  AND f.id = b.feature_id;`
 
 	rows, err := db.Query(query)

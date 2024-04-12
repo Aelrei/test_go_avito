@@ -18,12 +18,10 @@ func GetBannerByTagAndFeature(tagID, featureID string) (string, error) {
 
 	query := `
 		SELECT b.content
-		FROM features as f, banners as b, banner_tag as bt, tags as t
-		WHERE t.id = bt.tag_id 
-		  AND bt.banner_id = b.id 
-		  AND f.id = b.feature_id  
-		  AND t.id = $1
-		  AND b.feature_id = $2;
+        FROM  banners as b
+            LEFT OUTER JOIN banner_tag as bt
+        ON bt.banner_id = b.id
+		  WHERE bt.tag_id = $1 AND b.feature_id = $2 AND b.active = true;
 	`
 
 	rows := db.QueryRow(query, tagID, featureID)
@@ -56,18 +54,19 @@ func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner
 	defer db.Close()
 
 	query := `
-        SELECT b.id, b.content, b.feature_id, t.id, b.active, b.created_at, b.updated_at 
-        FROM features as f, banners as b, banner_tag as bt, tags as t
-        WHERE t.id = bt.tag_id 
-          AND bt.banner_id = b.id 
-          AND f.id = b.feature_id  
+        SELECT b.id, b.content, b.feature_id, bt.tag_id, b.active, b.created_at, b.updated_at
+        FROM  banners as b
+        LEFT OUTER JOIN features as f
+            ON b.feature_id = f.id
+        INNER JOIN banner_tag as bt
+            ON b.id = bt.banner_id
     `
 	if featureID != "" && tagID == "" {
 		query = query + ` AND b.feature_id = $1 `
 	} else if tagID != "" && featureID == "" {
-		query = query + ` AND t.id = $1 `
+		query = query + ` AND bt.tag_id = $1 `
 	} else if featureID != "" && tagID != "" {
-		query = query + ` AND f.id = $1 AND t.id = $2 `
+		query = query + ` AND b.feature_id = $1 AND bt.tag_id = $2 `
 	}
 
 	if featureID != "" && tagID != "" {
@@ -145,4 +144,55 @@ func GetMaxBannerIdFromDB(db *sql.DB) (int, error) {
 		return 0, fmt.Errorf("error getting max Id from database: %v", err)
 	}
 	return maxId, nil
+}
+
+func GetMaxBannerFeatureIdFromDB(db *sql.DB) (int, error) {
+	var maxFeatureId int
+	query := "SELECT MAX(id) FROM features"
+	err := db.QueryRow(query).Scan(&maxFeatureId)
+	if err != nil {
+		return 0, fmt.Errorf("error getting max Id from database: %v", err)
+	}
+	return maxFeatureId, nil
+}
+
+func GetMaxBannerTagIdFromDB(db *sql.DB) (int, error) {
+	var maxTagId int
+	query := "SELECT MAX(id) FROM tags"
+	err := db.QueryRow(query).Scan(&maxTagId)
+	if err != nil {
+		return 0, fmt.Errorf("error getting max Id from database: %v", err)
+	}
+	return maxTagId, nil
+}
+
+func CheckBannerByTagFeature(tagID int, featureID int, db *sql.DB) (bool, error) {
+	var exists bool
+	err := db.QueryRow(`
+        SELECT EXISTS (
+            SELECT 1
+            FROM banners AS b
+            INNER JOIN banner_tag AS bt ON b.id = bt.banner_id
+            WHERE b.feature_id = $1 AND bt.tag_id = $2
+        )
+    `, featureID, tagID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("error checking tag_id validity: %v", err)
+	}
+	return exists, nil
+}
+
+func CheckBannerById(bannerId int, db *sql.DB) (bool, error) {
+	var exists bool
+	err := db.QueryRow(`
+        SELECT EXISTS (
+            SELECT 1
+            FROM banners AS b
+            WHERE b.id = $1
+        )
+    `, bannerId).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("error checking tag_id validity: %v", err)
+	}
+	return exists, nil
 }

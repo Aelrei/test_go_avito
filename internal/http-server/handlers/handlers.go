@@ -24,6 +24,13 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 
 		if useLastRevision == "" {
 			useLastRevision = "false"
+		} else {
+
+			_, err := accessDB.ValidateLastRevision(useLastRevision)
+			if err != nil {
+				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+				return
+			}
 		}
 
 		_, err := accessDB.ValidateID(tagID)
@@ -64,6 +71,10 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 			var data map[string]interface{}
 			var ans storage.Banner
 			err = json.Unmarshal(banner.([]byte), &ans)
+			if ans.Active == false {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 			str := []byte(ans.Content)
 			err = json.Unmarshal([]byte(str), &data)
 			if err != nil {
@@ -158,6 +169,7 @@ func GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		db, err := sql.Open("postgres", storage.PsqlInfo)
 		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 			return
 		}
 		defer db.Close()
@@ -193,11 +205,12 @@ func GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func PatchBannerHandler(w http.ResponseWriter, r *http.Request) {
+func PatchDeleteBannerHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "PATCH":
 		db, err := sql.Open("postgres", storage.PsqlInfo)
 		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 			return
 		}
 		defer db.Close()
@@ -228,5 +241,26 @@ func PatchBannerHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
+	case "DELETE":
+		db, err := sql.Open("postgres", storage.PsqlInfo)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+			return
+		}
+		defer db.Close()
+		parts := strings.Split(r.URL.Path, "/")
+		id, err := strconv.Atoi(parts[len(parts)-1])
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		err = setters.DeleteBanner(db, id)
+		if err != nil {
+			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusNoContent)
+
 	}
 }

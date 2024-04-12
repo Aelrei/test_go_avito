@@ -2,6 +2,7 @@ package setters
 
 import (
 	"Avito_go/internal/getters"
+	"Avito_go/internal/getters/gocache"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -116,6 +117,8 @@ func ChangeInfoBanner(data map[string]interface{}, db *sql.DB, idNum int) error 
 	}
 	if idNum > maxID {
 		return fmt.Errorf("too big id")
+	} else if idNum <= 0 {
+		return fmt.Errorf("id less than 1")
 	}
 
 	contentData, ok := data["content"].(map[string]interface{})
@@ -136,11 +139,15 @@ func ChangeInfoBanner(data map[string]interface{}, db *sql.DB, idNum int) error 
 		return fmt.Errorf("error marshalling content: %v", err)
 	}
 
-	featureID, ok := data["feature_id"].(float64)
-	if !ok || featureID <= 0 {
-		return fmt.Errorf("feature_id field is missing, not an integer or below zero")
+	maxFeatureId, err := getters.GetMaxBannerFeatureIdFromDB(db)
+	if err != nil {
+		return fmt.Errorf("can't count max(feature_id)")
 	}
-	intValue := int(featureID)
+	featureID, ok := data["feature_id"].(float64)
+	featureIDInt := int(featureID)
+	if !ok || featureIDInt <= 0 || featureIDInt > maxFeatureId {
+		return fmt.Errorf("feature_id field is missing, not an integer, below zero or more than max(feature_id) ")
+	}
 
 	active, ok := data["is_active"].(bool)
 	if !ok {
@@ -152,11 +159,20 @@ func ChangeInfoBanner(data map[string]interface{}, db *sql.DB, idNum int) error 
 		return fmt.Errorf("tag_ids field is missing or not an array")
 	}
 
+	maxTagID, err := getters.GetMaxBannerTagIdFromDB(db)
+	if err != nil {
+		return fmt.Errorf("can't count max(feature_id)")
+	}
 	var tagIDArray []int
 	for _, tagID := range tagIDs {
 		tagIDFloat, ok := tagID.(float64)
-		if !ok || tagIDFloat <= 0 {
+		tagIdInt := int(tagIDFloat)
+		if !ok || tagIdInt <= 0 || tagIdInt > maxTagID {
 			return fmt.Errorf("tag_id is not an integer or below zero")
+		}
+		check, err := getters.CheckBannerByTagFeature(tagIdInt, featureIDInt, db)
+		if check || err != nil {
+			return fmt.Errorf("may cause duplicates")
 		}
 		tagIDArray = append(tagIDArray, int(tagIDFloat))
 	}
@@ -167,9 +183,56 @@ func ChangeInfoBanner(data map[string]interface{}, db *sql.DB, idNum int) error 
         UPDATE banners
         SET content = $1, feature_id = $2, active = $3, updated_at = $4
         WHERE id = $5
-    `, jsonData, intValue, active, updateTime, idNum)
+    `, jsonData, featureIDInt, active, updateTime, idNum)
 	if err != nil {
 		return fmt.Errorf("error updating banner: %v", err)
+	}
+
+	_, err = db.Exec("DELETE FROM banner_tag WHERE banner_id = $1", idNum)
+	if err != nil {
+		return fmt.Errorf("error deleting old banner_tag associations: %v", err)
+	}
+
+	for _, tagID := range tagIDArray {
+		_, err := db.Exec("INSERT INTO banner_tag (banner_id, tag_id) VALUES ($1, $2)", idNum, tagID)
+		if err != nil {
+			return fmt.Errorf("error inserting new banner_tag association: %v", err)
+		}
+	}
+
+	err = gocache.LoadDataIntoCache()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DeleteBanner(db *sql.DB, idNum int) error {
+	maxID, err := getters.GetMaxBannerIdFromDB(db)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		maxID = 0
+		return nil
+	}
+	if idNum > maxID {
+		return fmt.Errorf("too big id")
+	} else if idNum <= 0 {
+		return fmt.Errorf("id less than 1")
+	}
+
+	check, err := getters.CheckBannerById(idNum, db)
+	if !check || err != nil {
+		return fmt.Errorf("no such banner")
+	}
+
+	_, err = db.Exec("DELETE FROM banners WHERE id = $1", idNum)
+	if err != nil {
+		return fmt.Errorf("failed to delete banner: %v", err)
+	}
+
+	_, err = db.Exec("DELETE FROM banner_tag WHERE banner_id = $1", idNum)
+	if err != nil {
+		return fmt.Errorf("failed to delete banner: %v", err)
 	}
 
 	return nil

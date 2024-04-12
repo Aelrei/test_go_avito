@@ -92,7 +92,7 @@ func main() {
 
 	router.Handle("/user_banner", accessHTTP.AuthMiddlewareUserAdmin(http.HandlerFunc(handlers.GetUserBannerHandler)))
 	router.Handle("/banner", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(handlers.GetPostBannersHandler)))
-	router.Handle("/banner/{id}", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(handlers.PatchBannerHandler)))
+	router.Handle("/banner/{id}", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(handlers.PatchDeleteBannerHandler)))
 
 	err = http.ListenAndServe(":8085", router)
 	if err != nil {
