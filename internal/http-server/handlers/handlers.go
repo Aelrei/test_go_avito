@@ -9,14 +9,21 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
-func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
+type S struct {
+	db *sql.DB
+}
+
+func New(db *sql.DB) S {
+	return S{db: db}
+}
+
+func (ss *S) GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		tagID := r.URL.Query().Get("tag_id")
@@ -47,8 +54,7 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if useLastRevision == "true" {
-			banner, err := getters.GetBannerByTagAndFeature(tagID, featureID)
-			fmt.Println(banner)
+			banner, err := getters.GetBannerByTagAndFeature(tagID, featureID, ss.db)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					w.WriteHeader(http.StatusNotFound)
@@ -57,13 +63,8 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
-			var ban storage.Banner
-			err = json.Unmarshal([]byte(banner), &ban)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return
-			}
-			if !ban.Active && token == "user_token" {
+			active, err := getters.GetActive(tagID, featureID, ss.db)
+			if active == false && token == "user_token" {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
@@ -110,7 +111,7 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
+func (ss *S) GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		tagID := r.URL.Query().Get("tag_id")
@@ -154,7 +155,7 @@ func GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		banner, err := getters.GetAllBanners(tagID, featureID, limit, offset)
+		banner, err := getters.GetAllBanners(tagID, featureID, limit, offset, ss.db)
 		if banner == nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -199,7 +200,7 @@ func GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		newBannerID, err := setters.InsertBanner(data, db)
+		newBannerID, err := setters.InsertBanner(data, ss.db)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -218,7 +219,7 @@ func GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func PatchDeleteBannerHandler(w http.ResponseWriter, r *http.Request) {
+func (ss *S) PatchDeleteBannerHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "PATCH":
 		db, err := sql.Open("postgres", storage.PsqlInfo)

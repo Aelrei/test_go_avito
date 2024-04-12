@@ -96,8 +96,8 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		}
 
 		// Генерация случайного количества связей баннеров с тегами (от 1 до 4 тегов)
-		for i := 0; i < rand.IntN(4)+1; i++ {
-			tagID := rand.IntN(100) + 1 // Генерация случайного tag_id в диапазоне от 1 до 100
+		for i := 0; i < rand.IntN(3)+1; i++ {
+			tagID := i + id // Генерация случайного tag_id в диапазоне от 1 до 100
 
 			sqlBannerTag := `
 				INSERT INTO banner_tag (banner_id, tag_id)
@@ -119,7 +119,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		RETURNING id;
 	`
 
-	for id := 1; id <= storage.NumberBanners; id++ {
+	for id := 1; id <= (storage.NumberBanners / 2); id++ {
 		value := "feature" + strconv.Itoa(id)
 		_, err := db.Exec(sqlStatementFeatures, value)
 		if err != nil {
@@ -135,7 +135,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		RETURNING id;
 	`
 
-	for id := 1; id <= storage.NumberBanners; id++ {
+	for id := 1; id <= storage.NumberBanners*2; id++ {
 		value := "tag" + strconv.Itoa(id)
 		_, err := db.Exec(sqlStatementTags, value)
 		if err != nil {

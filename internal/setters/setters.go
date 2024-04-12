@@ -200,7 +200,7 @@ func ChangeInfoBanner(data map[string]interface{}, db *sql.DB, idNum int) error 
 		}
 	}
 
-	err = gocache.LoadDataIntoCache()
+	err = gocache.LoadDataIntoCache(db)
 	if err != nil {
 		return err
 	}

@@ -70,7 +70,7 @@ func main() {
 		_ = storage
 	}
 
-	if err := gocache.LoadDataIntoCache(); err != nil {
+	if err := gocache.LoadDataIntoCache(db); err != nil {
 		log.Info("failed to load data into cache:", err)
 		return
 	}
@@ -80,7 +80,7 @@ func main() {
 		ticker := time.Tick(5 * time.Minute)
 		for {
 			<-ticker
-			if err := gocache.LoadDataIntoCache(); err != nil {
+			if err := gocache.LoadDataIntoCache(db); err != nil {
 				log.Warn("failed to update cache")
 			} else {
 				log.Info("success update cache")
@@ -88,11 +88,12 @@ func main() {
 		}
 	}()
 
+	S := handlers.New(db)
 	router := http.NewServeMux()
 
-	router.Handle("/user_banner", accessHTTP.AuthMiddlewareUserAdmin(http.HandlerFunc(handlers.GetUserBannerHandler)))
-	router.Handle("/banner", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(handlers.GetPostBannersHandler)))
-	router.Handle("/banner/{id}", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(handlers.PatchDeleteBannerHandler)))
+	router.Handle("/user_banner", accessHTTP.AuthMiddlewareUserAdmin(http.HandlerFunc(S.GetUserBannerHandler)))
+	router.Handle("/banner", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(S.GetPostBannersHandler)))
+	router.Handle("/banner/{id}", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(S.PatchDeleteBannerHandler)))
 
 	err = http.ListenAndServe(":8085", router)
 	if err != nil {

@@ -12,16 +12,9 @@ var (
 	Cah = cache.New(0, 0)
 )
 
-func LoadDataIntoCache() error {
+func LoadDataIntoCache(db *sql.DB) error {
 
 	Cah.Flush()
-
-	db, err := sql.Open("postgres", storage.PsqlInfo)
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
 	query := `SELECT
     b.id AS banner_id,
     b.content AS banner_content,

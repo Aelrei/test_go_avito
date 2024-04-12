@@ -9,13 +9,31 @@ import (
 	"fmt"
 )
 
-func GetBannerByTagAndFeature(tagID, featureID string) (string, error) {
-	db, err := sql.Open("postgres", storage.PsqlInfo)
-	if err != nil {
-		return "", fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
+func GetActive(tagID, featureID string, db *sql.DB) (bool, error) {
+	query := `
+		SELECT b.active
+        FROM  banners as b
+            LEFT OUTER JOIN banner_tag as bt
+        ON bt.banner_id = b.id
+		  WHERE bt.tag_id = $1 AND b.feature_id = $2;
+	`
 
+	rows := db.QueryRow(query, tagID, featureID)
+
+	var content bool
+	err := rows.Scan(&content)
+	if err != nil {
+		return false, fmt.Errorf("error during scanning result set: %w", err)
+	}
+
+	if content == true {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func GetBannerByTagAndFeature(tagID, featureID string, db *sql.DB) (string, error) {
 	query := `
 		SELECT b.content
         FROM  banners as b
@@ -27,7 +45,7 @@ func GetBannerByTagAndFeature(tagID, featureID string) (string, error) {
 	rows := db.QueryRow(query, tagID, featureID)
 
 	var content string
-	err = rows.Scan(&content)
+	err := rows.Scan(&content)
 	if err != nil {
 		return "", fmt.Errorf("error during scanning result set: %w", err)
 	}
@@ -45,14 +63,7 @@ func GetBannerByTagAndFeature(tagID, featureID string) (string, error) {
 	return string(formattedJSON), nil
 }
 
-func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner, error) {
-
-	db, err := sql.Open("postgres", storage.PsqlInfo)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer db.Close()
-
+func GetAllBanners(tagID, featureID, limit, offset string, db *sql.DB) ([]*storage.AllBanner, error) {
 	query := `
         SELECT b.id, b.content, b.feature_id, bt.tag_id, b.active, b.created_at, b.updated_at
         FROM  banners as b
@@ -76,6 +87,7 @@ func GetAllBanners(tagID, featureID, limit, offset string) ([]*storage.AllBanner
 	}
 
 	var rows *sql.Rows
+	var err error
 	if featureID != "" && tagID != "" {
 		rows, err = db.Query(query, featureID, tagID, limit, offset)
 	} else if featureID != "" && tagID == "" {
