@@ -21,9 +21,9 @@ func ValidateLimitOffset(id string) (int, error) {
 	return parsedID, nil
 }
 
-func ValidateLastRevision(flag string) (string, error) {
+func ValidateLastRevision(flag string) (bool, error) {
 	if flag != "false" && flag != "true" {
-		return "false", errors.New("not correct one of parameters")
+		return false, errors.New("not correct one of parameters")
 	}
-	return flag, nil
+	return true, nil
 }

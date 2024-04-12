@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var NumberBanners = 10
+var NumberBanners = 1000
 
 var PsqlInfo = fmt.Sprintf("host=%s port=%s user=%s "+
 	"password=%s dbname=%s sslmode=disable",

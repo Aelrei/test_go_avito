@@ -2,7 +2,7 @@ package setters
 
 import (
 	"Avito_go/internal/getters"
-	"Avito_go/internal/getters/gocache"
+	"Avito_go/internal/gocache"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -170,7 +170,7 @@ func ChangeInfoBanner(data map[string]interface{}, db *sql.DB, idNum int) error 
 		if !ok || tagIdInt <= 0 || tagIdInt > maxTagID {
 			return fmt.Errorf("tag_id is not an integer or below zero")
 		}
-		check, err := getters.CheckBannerByTagFeature(tagIdInt, featureIDInt, db)
+		check, err := getters.CheckBannerByTagFeature(tagIdInt, featureIDInt, idNum, db)
 		if check || err != nil {
 			return fmt.Errorf("may cause duplicates")
 		}

@@ -3,7 +3,7 @@ package main
 import "C"
 import (
 	"Avito_go/internal/config"
-	"Avito_go/internal/getters/gocache"
+	"Avito_go/internal/gocache"
 	"Avito_go/internal/http-server/accessHTTP"
 	"Avito_go/internal/http-server/handlers"
 	"Avito_go/internal/lib/logger/postgres"

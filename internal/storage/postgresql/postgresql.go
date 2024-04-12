@@ -4,7 +4,6 @@ import (
 	"Avito_go/internal/storage"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	_ "github.com/lib/pq"
 	"math/rand/v2"
@@ -70,89 +69,78 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 
-	sqlStatementTags := `
-		INSERT INTO tags (id, name)
-		VALUES ($1, $2)
-		ON CONFLICT (id) DO NOTHING
-		RETURNING id;`
-
-	for id := 1; id < storage.NumberBanners; id++ {
-		value := "tag" + strconv.Itoa(id)
-		err = db.QueryRow(sqlStatementTags, id, value).Scan(&id)
-
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				continue
-			} else {
-				fmt.Println("Error during request:", err)
-				panic(err)
-			}
-		}
-
-	}
-
-	sqlStatementFeatures := `
-		INSERT INTO features (id, name)
-		VALUES ($1, $2)
+	sqlStatementBanners := `
+		INSERT INTO banners (content, feature_id, active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (id) DO NOTHING
 		RETURNING id;
-		`
+	`
 
-	for id := 1; id < storage.NumberBanners; id++ {
-		value := "feature" + strconv.Itoa(id)
-		err = db.QueryRow(sqlStatementFeatures, id, value).Scan(&id)
-
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				continue
-			} else {
-				fmt.Println("Error during request:", err)
-				panic(err)
-			}
-		}
-	}
-
-	sqlStatementBanners := `
-    INSERT INTO banners (id, content, feature_id, active, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6)
-    ON CONFLICT (id) DO NOTHING
-    RETURNING id;
-`
-
-	for id := 1; id < storage.NumberBanners; id++ {
+	for id := 1; id <= storage.NumberBanners; id++ {
 		content := storage.BannerContent{
 			Title: "some_title" + strconv.Itoa(id),
 			Text:  "some_text" + strconv.Itoa(id),
 			URL:   "some_url" + strconv.Itoa(id),
 		}
 		contentJSON, _ := json.Marshal(content)
-		for i := 0; i <= rand.IntN(3)+1; i++ {
-			featureID := rand.IntN(7) + id
-			active := "true"
-			createdAt := time.Now().Format("2006-01-02 15:04:05")
-			updatedAt := time.Now().Format("2006-01-02 15:04:05")
 
-			_, err := db.Exec(sqlStatementBanners, id, contentJSON, featureID, active, createdAt, updatedAt)
+		featureID := (id % 7) + 1 // Генерация feature_id в диапазоне от 1 до 7
+
+		createdAt := time.Now()
+		updatedAt := time.Now()
+
+		_, err := db.Exec(sqlStatementBanners, contentJSON, featureID, true, createdAt, updatedAt)
+		if err != nil {
+			fmt.Println("Error during request:", err)
+			return nil, err
+		}
+
+		// Генерация случайного количества связей баннеров с тегами (от 1 до 4 тегов)
+		for i := 0; i < rand.IntN(4)+1; i++ {
+			tagID := rand.IntN(100) + 1 // Генерация случайного tag_id в диапазоне от 1 до 100
+
+			sqlBannerTag := `
+				INSERT INTO banner_tag (banner_id, tag_id)
+				VALUES ($1, $2)
+				ON CONFLICT (banner_id, tag_id) DO NOTHING;
+			`
+			_, err := db.Exec(sqlBannerTag, id, tagID)
 			if err != nil {
 				fmt.Println("Error during request:", err)
-				panic(err)
+				return nil, err
 			}
 		}
 	}
 
-	sqlBannerTag := `
-	   INSERT INTO banner_tag (banner_id, tag_id)
-	   VALUES ($1, $2)
-	   ON CONFLICT (banner_id, tag_id) DO NOTHING;
+	sqlStatementFeatures := `
+		INSERT INTO features (name)
+		VALUES ($1)
+		ON CONFLICT (id) DO NOTHING
+		RETURNING id;
 	`
-	for id := 1; id < storage.NumberBanners; id++ {
-		for i := 0; i <= rand.IntN(3)+1; i++ {
-			randId := rand.IntN(4) + id + 1
-			_, err := db.Exec(sqlBannerTag, id, randId)
-			if err != nil {
-				fmt.Println("Error during request:", err)
-				panic(err)
-			}
+
+	for id := 1; id <= storage.NumberBanners; id++ {
+		value := "feature" + strconv.Itoa(id)
+		_, err := db.Exec(sqlStatementFeatures, value)
+		if err != nil {
+			fmt.Println("Error during request:", err)
+			return nil, err
+		}
+	}
+
+	sqlStatementTags := `
+		INSERT INTO tags (name)
+		VALUES ($1)
+		ON CONFLICT (id) DO NOTHING
+		RETURNING id;
+	`
+
+	for id := 1; id <= storage.NumberBanners; id++ {
+		value := "tag" + strconv.Itoa(id)
+		_, err := db.Exec(sqlStatementTags, value)
+		if err != nil {
+			fmt.Println("Error during request:", err)
+			return nil, err
 		}
 	}
 

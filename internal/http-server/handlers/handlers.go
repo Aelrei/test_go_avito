@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -21,6 +22,7 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 		tagID := r.URL.Query().Get("tag_id")
 		featureID := r.URL.Query().Get("feature_id")
 		useLastRevision := r.URL.Query().Get("use_last_revision")
+		token := r.Header.Get("token")
 
 		if useLastRevision == "" {
 			useLastRevision = "false"
@@ -46,12 +48,23 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 
 		if useLastRevision == "true" {
 			banner, err := getters.GetBannerByTagAndFeature(tagID, featureID)
+			fmt.Println(banner)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					w.WriteHeader(http.StatusNotFound)
 				} else {
 					accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 				}
+				return
+			}
+			var ban storage.Banner
+			err = json.Unmarshal([]byte(banner), &ban)
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
+			if !ban.Active && token == "user_token" {
+				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			jsonBytes := append([]byte(banner), '\n')
@@ -71,7 +84,7 @@ func GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 			var data map[string]interface{}
 			var ans storage.Banner
 			err = json.Unmarshal(banner.([]byte), &ans)
-			if ans.Active == false {
+			if ans.Active == false && token == "user_token" {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}

@@ -1,7 +1,7 @@
 package getters
 
 import (
-	"Avito_go/internal/getters/gocache"
+	"Avito_go/internal/gocache"
 	"Avito_go/internal/storage"
 	"database/sql"
 	"encoding/json"
@@ -21,7 +21,7 @@ func GetBannerByTagAndFeature(tagID, featureID string) (string, error) {
         FROM  banners as b
             LEFT OUTER JOIN banner_tag as bt
         ON bt.banner_id = b.id
-		  WHERE bt.tag_id = $1 AND b.feature_id = $2 AND b.active = true;
+		  WHERE bt.tag_id = $1 AND b.feature_id = $2;
 	`
 
 	rows := db.QueryRow(query, tagID, featureID)
@@ -166,16 +166,16 @@ func GetMaxBannerTagIdFromDB(db *sql.DB) (int, error) {
 	return maxTagId, nil
 }
 
-func CheckBannerByTagFeature(tagID int, featureID int, db *sql.DB) (bool, error) {
+func CheckBannerByTagFeature(tagID, featureID, bannerId int, db *sql.DB) (bool, error) {
 	var exists bool
 	err := db.QueryRow(`
         SELECT EXISTS (
             SELECT 1
             FROM banners AS b
             INNER JOIN banner_tag AS bt ON b.id = bt.banner_id
-            WHERE b.feature_id = $1 AND bt.tag_id = $2
+            WHERE b.feature_id = $1 AND bt.tag_id = $2 AND b.id != $3
         )
-    `, featureID, tagID).Scan(&exists)
+    `, featureID, tagID, bannerId).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("error checking tag_id validity: %v", err)
 	}

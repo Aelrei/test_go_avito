@@ -22,10 +22,18 @@ func LoadDataIntoCache() error {
 	}
 	defer db.Close()
 
-	query := `SELECT b.id, b.content, b.feature_id, bt.tag_id as tag_id, b.active, b.created_at, b.updated_at
-		FROM features as f, banners as b, banner_tag as bt
-		WHERE bt.banner_id = b.id
-		  AND f.id = b.feature_id;`
+	query := `SELECT
+    b.id AS banner_id,
+    b.content AS banner_content,
+    b.feature_id AS banner_feature_id,
+    bt.tag_id AS tag_id,
+    b.active AS banner_active,
+    b.created_at AS banner_created_at,
+    b.updated_at AS banner_updated_at
+FROM
+    banners AS b
+JOIN
+    banner_tag AS bt ON bt.banner_id = b.id;`
 
 	rows, err := db.Query(query)
 	if err != nil {
