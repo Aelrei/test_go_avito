@@ -1,12 +1,16 @@
 package postgresql
 
 import (
-	"Avito_go/internal/storage"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	_ "github.com/lib/pq"
+	"gitlab.com/Aelrei/test_go_avito/internal/config"
+	"gitlab.com/Aelrei/test_go_avito/internal/lib/logger/postgres"
+	"gitlab.com/Aelrei/test_go_avito/internal/storage"
+	"log/slog"
 	"math/rand/v2"
+	"os"
 	"strconv"
 	"time"
 )
@@ -84,7 +88,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		}
 		contentJSON, _ := json.Marshal(content)
 
-		featureID := (id % 7) + 1 // Генерация feature_id в диапазоне от 1 до 7
+		featureID := (id % 7) + 1
 
 		createdAt := time.Now()
 		updatedAt := time.Now()
@@ -95,9 +99,8 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 			return nil, err
 		}
 
-		// Генерация случайного количества связей баннеров с тегами (от 1 до 4 тегов)
 		for i := 0; i < rand.IntN(3)+1; i++ {
-			tagID := i + id // Генерация случайного tag_id в диапазоне от 1 до 100
+			tagID := i + id
 
 			sqlBannerTag := `
 				INSERT INTO banner_tag (banner_id, tag_id)
@@ -145,4 +148,39 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 	}
 
 	return &Storage{db: db}, nil
+}
+
+func CheckPostgresDB(db *sql.DB, cfg *config.Config, log *slog.Logger) error {
+	query := `
+		SELECT COUNT(*) FROM information_schema.tables
+		WHERE table_name IN ('banners', 'tags', 'features', 'banner_tag');
+	`
+	var count int
+	err := db.QueryRow(query).Scan(&count)
+	if err != nil {
+		fmt.Println("Failed to execute query:", err)
+		return err
+	}
+
+	if count == 4 {
+		log.Info("database exist")
+	} else {
+		storage, err := New(cfg.Storage)
+		if err != nil {
+			log.Error("failed to init storage", postgres.Err(err))
+			os.Exit(1)
+		} else {
+			log.Info("success init storage")
+		}
+
+		storage, err = UpdateStorage(cfg.Storage)
+		if err != nil {
+			log.Error("failed to update storage", postgres.Err(err))
+			os.Exit(1)
+		} else {
+			log.Info("success update storage")
+		}
+		_ = storage
+	}
+	return nil
 }

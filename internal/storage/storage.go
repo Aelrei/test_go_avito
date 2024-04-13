@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"fmt"
 	"os"
 )
@@ -45,8 +44,3 @@ type AllBanner struct {
 	Created_at string `json:"created_at"`
 	Updated_at string `json:"updated_at"`
 }
-
-var (
-	ErrTagNotFound     = errors.New("tag not found")
-	ErrFeatureNotFound = errors.New("feature not found")
-)

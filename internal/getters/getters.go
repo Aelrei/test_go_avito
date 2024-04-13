@@ -1,12 +1,12 @@
 package getters
 
 import (
-	"Avito_go/internal/gocache"
-	"Avito_go/internal/storage"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gitlab.com/Aelrei/test_go_avito/internal/gocache"
+	"gitlab.com/Aelrei/test_go_avito/internal/storage"
 )
 
 func GetActive(tagID, featureID string, db *sql.DB) (bool, error) {
@@ -26,7 +26,7 @@ func GetActive(tagID, featureID string, db *sql.DB) (bool, error) {
 		return false, fmt.Errorf("error during scanning result set: %w", err)
 	}
 
-	if content == true {
+	if content {
 		return true, nil
 	}
 
@@ -127,7 +127,7 @@ func GetAllBanners(tagID, featureID, limit, offset string, db *sql.DB) ([]*stora
 		}
 	}
 
-	var banners []*storage.AllBanner
+	banners := make([]*storage.AllBanner, 0, len(bannerMap))
 	for _, b := range bannerMap {
 		banners = append(banners, b)
 	}
@@ -141,7 +141,7 @@ func GetAllBanners(tagID, featureID, limit, offset string, db *sql.DB) ([]*stora
 
 func GetCache(TagId, FeatureId string) (interface{}, error) {
 	str := fmt.Sprintf("%s %s", TagId, FeatureId)
-	cachedValue, found := gocache.Cah.Get(str)
+	cachedValue, found := gocache.Cache.Get(str)
 	if !found {
 		return nil, errors.New("value not found in cache")
 	}

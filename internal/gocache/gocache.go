@@ -1,20 +1,18 @@
 package gocache
 
 import (
-	"Avito_go/internal/storage"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/patrickmn/go-cache"
+	"gitlab.com/Aelrei/test_go_avito/internal/storage"
 )
 
 var (
-	Cah = cache.New(0, 0)
+	Cache = cache.New(0, 0)
 )
 
 func LoadDataIntoCache(db *sql.DB) error {
-
-	Cah.Flush()
 	query := `SELECT
     b.id AS banner_id,
     b.content AS banner_content,
@@ -45,7 +43,7 @@ JOIN
 		if err != nil {
 			return fmt.Errorf("failed to marshal data to JSON: %w", err)
 		}
-		Cah.Set(fmt.Sprintf("%d %d", banner.Tag_id, banner.Feature_id), jsonData, cache.NoExpiration)
+		Cache.Set(fmt.Sprintf("%d %d", banner.Tag_id, banner.Feature_id), jsonData, cache.NoExpiration)
 	}
 
 	return nil

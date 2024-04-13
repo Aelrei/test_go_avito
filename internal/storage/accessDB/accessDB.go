@@ -5,25 +5,25 @@ import (
 	"strconv"
 )
 
-func ValidateID(id string) (int, error) {
+func ValidateID(id string) error {
 	parsedID, err := strconv.Atoi(id)
 	if err != nil || parsedID <= 0 {
-		return 0, errors.New("not correct one of parameters")
+		return errors.New("not correct one of parameters")
 	}
-	return parsedID, nil
+	return nil
 }
 
-func ValidateLimitOffset(id string) (int, error) {
+func ValidateLimitOffset(id string) error {
 	parsedID, err := strconv.Atoi(id)
 	if err != nil || parsedID < 0 {
-		return 0, errors.New("not correct one of parameters")
+		return errors.New("not correct one of parameters")
 	}
-	return parsedID, nil
+	return nil
 }
 
-func ValidateLastRevision(flag string) (bool, error) {
+func ValidateLastRevision(flag string) error {
 	if flag != "false" && flag != "true" {
-		return false, errors.New("not correct one of parameters")
+		return errors.New("not correct one of parameters")
 	}
-	return true, nil
+	return nil
 }

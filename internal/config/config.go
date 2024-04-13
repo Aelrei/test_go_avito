@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+const (
+	EnvLocal = "local"
+	EnvDev   = "dev"
+	EnvProd  = "prod"
+)
+
 type Config struct {
 	Env        string `yaml:"env" env-default:"local"`
 	Storage    string `yaml:"storage_path" env-required:"true"`

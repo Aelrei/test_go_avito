@@ -45,13 +45,15 @@ func AuthMiddlewareAdmin(next http.Handler) http.Handler {
 func SendErrorResponse(w http.ResponseWriter, status int, message string) {
 	w.WriteHeader(status)
 	errorMessage := map[string]string{"error": message}
-	jsonBytes, err := json.Marshal(errorMessage)
-	jsonBytes, err = json.MarshalIndent(errorMessage, "", " ")
+	jsonBytes, err := json.MarshalIndent(errorMessage, "", " ")
 	jsonBytes = append(jsonBytes, '\n')
 	if err != nil {
 		http.Error(w, "Error during request ", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonBytes)
+	_, err = w.Write(jsonBytes)
+	if err != nil {
+		return
+	}
 }

@@ -1,18 +1,17 @@
 package handlers
 
 import (
-	"Avito_go/internal/getters"
-	"Avito_go/internal/http-server/accessHTTP"
-	"Avito_go/internal/setters"
-	"Avito_go/internal/storage"
-	"Avito_go/internal/storage/accessDB"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"gitlab.com/Aelrei/test_go_avito/internal/getters"
+	"gitlab.com/Aelrei/test_go_avito/internal/http-server/accessHTTP"
+	"gitlab.com/Aelrei/test_go_avito/internal/setters"
+	"gitlab.com/Aelrei/test_go_avito/internal/storage"
+	"gitlab.com/Aelrei/test_go_avito/internal/storage/accessDB"
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type S struct {
@@ -34,80 +33,29 @@ func (ss *S) GetUserBannerHandler(w http.ResponseWriter, r *http.Request) {
 		if useLastRevision == "" {
 			useLastRevision = "false"
 		} else {
-
-			_, err := accessDB.ValidateLastRevision(useLastRevision)
+			err := accessDB.ValidateLastRevision(useLastRevision)
 			if err != nil {
 				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
 		}
-
-		_, err := accessDB.ValidateID(tagID)
+		err := accessDB.ValidateID(tagID)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		_, err = accessDB.ValidateID(featureID)
+		err = accessDB.ValidateID(featureID)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-
 		if useLastRevision == "true" {
-			banner, err := getters.GetBannerByTagAndFeature(tagID, featureID, ss.db)
-			if err != nil {
-				if errors.Is(err, sql.ErrNoRows) {
-					w.WriteHeader(http.StatusNotFound)
-				} else {
-					accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
-				}
-				return
-			}
-			active, err := getters.GetActive(tagID, featureID, ss.db)
-			if active == false && token == "user_token" {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			jsonBytes := append([]byte(banner), '\n')
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(jsonBytes)
-			if err != nil {
-				return
-			}
+			trueLastRevision(w, tagID, featureID, token, ss.db)
 		} else if useLastRevision == "false" {
-			banner, found := getters.GetCache(tagID, featureID)
-			if found != nil {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			var data map[string]interface{}
-			var ans storage.Banner
-			err = json.Unmarshal(banner.([]byte), &ans)
-			if ans.Active == false && token == "user_token" {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			str := []byte(ans.Content)
-			err = json.Unmarshal([]byte(str), &data)
-			if err != nil {
-				accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
-				return
-			}
-			formattedJSON, err := json.MarshalIndent(data, "", "  ")
-			jsonBytes := append(formattedJSON, '\n')
-			if err != nil {
-				accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(jsonBytes)
-			if err != nil {
-				return
-			}
+			falseLastRevision(w, tagID, featureID, token)
 		}
+	default:
+		accessHTTP.SendErrorResponse(w, http.StatusBadRequest, "Not allowed Method")
 	}
 }
 
@@ -120,36 +68,36 @@ func (ss *S) GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 		offset := r.URL.Query().Get("offset")
 
 		if tagID == "" && featureID != "" {
-			_, err := accessDB.ValidateID(featureID)
+			err := accessDB.ValidateID(featureID)
 			if err != nil {
 				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
 		} else if tagID != "" && featureID == "" {
-			_, err := accessDB.ValidateID(tagID)
+			err := accessDB.ValidateID(tagID)
 			if err != nil {
 				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
 		} else {
-			_, err := accessDB.ValidateID(tagID)
+			err := accessDB.ValidateID(tagID)
 			if err != nil {
 				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
-			_, err = accessDB.ValidateID(featureID)
+			err = accessDB.ValidateID(featureID)
 			if err != nil {
 				accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 				return
 			}
 		}
 
-		_, err := accessDB.ValidateLimitOffset(limit)
+		err := accessDB.ValidateLimitOffset(limit)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		_, err = accessDB.ValidateLimitOffset(offset)
+		err = accessDB.ValidateLimitOffset(offset)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -169,11 +117,6 @@ func (ss *S) GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		jsonBytes, _ := json.MarshalIndent(banner, "", " ")
 		jsonBytes = append(jsonBytes, '\n')
-		if err != nil {
-			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
-			return
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(jsonBytes)
@@ -181,12 +124,6 @@ func (ss *S) GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "POST":
-		db, err := sql.Open("postgres", storage.PsqlInfo)
-		if err != nil {
-			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
-			return
-		}
-		defer db.Close()
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
@@ -216,25 +153,21 @@ func (ss *S) GetPostBannersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 		jsonBytes := append(responseBody, '\n')
 		w.Write(jsonBytes)
+	default:
+		accessHTTP.SendErrorResponse(w, http.StatusBadRequest, "Not allowed Method")
 	}
 }
 
 func (ss *S) PatchDeleteBannerHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "PATCH":
-		db, err := sql.Open("postgres", storage.PsqlInfo)
-		if err != nil {
-			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
-			return
-		}
-		defer db.Close()
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
 			return
 		}
-		parts := strings.Split(r.URL.Path, "/")
-		id, err := strconv.Atoi(parts[len(parts)-1])
+		strID := r.PathValue("id")
+		id, err := strconv.Atoi(strID)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -247,7 +180,7 @@ func (ss *S) PatchDeleteBannerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = setters.ChangeInfoBanner(data, db, id)
+		err = setters.ChangeInfoBanner(data, ss.db, id)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -256,25 +189,77 @@ func (ss *S) PatchDeleteBannerHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 	case "DELETE":
-		db, err := sql.Open("postgres", storage.PsqlInfo)
-		if err != nil {
-			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
-			return
-		}
-		defer db.Close()
-		parts := strings.Split(r.URL.Path, "/")
-		id, err := strconv.Atoi(parts[len(parts)-1])
+		strID := r.PathValue("id")
+		id, err := strconv.Atoi(strID)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		err = setters.DeleteBanner(db, id)
+		err = setters.DeleteBanner(ss.db, id)
 		if err != nil {
 			accessHTTP.SendErrorResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusNoContent)
+	default:
+		accessHTTP.SendErrorResponse(w, http.StatusBadRequest, "Not allowed Method")
+	}
+}
 
+func trueLastRevision(w http.ResponseWriter, tagID, featureID, token string, db *sql.DB) {
+	banner, err := getters.GetBannerByTagAndFeature(tagID, featureID, db)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+		}
+		return
+	}
+	active, err := getters.GetActive(tagID, featureID, db)
+	if active == false && token == "user_token" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	jsonBytes := append([]byte(banner), '\n')
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(jsonBytes)
+	if err != nil {
+		return
+	}
+}
+
+func falseLastRevision(w http.ResponseWriter, tagID, featureID, token string) {
+	banner, found := getters.GetCache(tagID, featureID)
+	if found != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	var data map[string]interface{}
+	var ans storage.Banner
+	err := json.Unmarshal(banner.([]byte), &ans)
+	if ans.Active == false && token == "user_token" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	str := []byte(ans.Content)
+	err = json.Unmarshal([]byte(str), &data)
+	if err != nil {
+		accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+		return
+	}
+	formattedJSON, err := json.MarshalIndent(data, "", "  ")
+	jsonBytes := append(formattedJSON, '\n')
+	if err != nil {
+		accessHTTP.SendErrorResponse(w, http.StatusInternalServerError, "StatusInternalServerError")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(jsonBytes)
+	if err != nil {
+		return
 	}
 }

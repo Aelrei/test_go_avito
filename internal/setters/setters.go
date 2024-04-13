@@ -1,12 +1,12 @@
 package setters
 
 import (
-	"Avito_go/internal/getters"
-	"Avito_go/internal/gocache"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"gitlab.com/Aelrei/test_go_avito/internal/getters"
+	"gitlab.com/Aelrei/test_go_avito/internal/gocache"
 	"strconv"
 	"time"
 )

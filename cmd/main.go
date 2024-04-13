@@ -1,85 +1,49 @@
 package main
 
-import "C"
 import (
-	"Avito_go/internal/config"
-	"Avito_go/internal/gocache"
-	"Avito_go/internal/http-server/accessHTTP"
-	"Avito_go/internal/http-server/handlers"
-	"Avito_go/internal/lib/logger/postgres"
-	storage2 "Avito_go/internal/storage"
-	"Avito_go/internal/storage/postgresql"
 	"database/sql"
 	"fmt"
-	"log/slog"
+	"gitlab.com/Aelrei/test_go_avito/internal/config"
+	"gitlab.com/Aelrei/test_go_avito/internal/gocache"
+	"gitlab.com/Aelrei/test_go_avito/internal/http-server/accessHTTP"
+	"gitlab.com/Aelrei/test_go_avito/internal/http-server/handlers"
+	"gitlab.com/Aelrei/test_go_avito/internal/lib/logger"
+	"gitlab.com/Aelrei/test_go_avito/internal/storage"
+	"gitlab.com/Aelrei/test_go_avito/internal/storage/postgresql"
 	"net/http"
-	"os"
 	"time"
-)
-
-const (
-	envLocal = "local"
-	envDev   = "dev"
-	envProd  = "prod"
 )
 
 func main() {
 
 	cfg := config.MustLoad()
-	log := setupLogger(cfg.Env)
+	log := logger.SetupLogger(cfg.Env)
 
-	log.Info("starting test")
-	log.Debug("debug test")
+	log.Info("starting...")
 
-	db, err := sql.Open("postgres", storage2.PsqlInfo)
+	db, err := sql.Open("postgres", storage.PsqlInfo)
 	if err != nil {
-		fmt.Println("Failed to connect to the database:", err)
+		log.Warn("Failed to connect to the database:", err)
 		return
 	}
 	defer db.Close()
 
-	query := `
-		SELECT COUNT(*) FROM information_schema.tables 
-		WHERE table_name IN ('banners', 'tags', 'features', 'banner_tag');
-	`
-	var count int
-	err = db.QueryRow(query).Scan(&count)
+	err = postgresql.CheckPostgresDB(db, cfg, log)
 	if err != nil {
-		fmt.Println("Failed to execute query:", err)
+		log.Warn("Failed to connect to the database:", err)
 		return
 	}
 
-	if count == 4 {
-		log.Info("database exist")
-	} else {
-		storage, err := postgresql.New(cfg.Storage)
-		if err != nil {
-			log.Error("failed to init storage", postgres.Err(err))
-			os.Exit(1)
-		} else {
-			log.Info("success init storage")
-		}
-
-		storage, err = postgresql.UpdateStorage(cfg.Storage)
-		if err != nil {
-			log.Error("failed to update storage", postgres.Err(err))
-			os.Exit(1)
-		} else {
-			log.Info("success update storage")
-		}
-		_ = storage
-	}
-
 	if err := gocache.LoadDataIntoCache(db); err != nil {
-		log.Info("failed to load data into cache:", err)
+		log.Warn("failed to load data into cache:", err)
 		return
 	}
 	log.Info("success upload cache")
 
 	go func() {
 		ticker := time.Tick(5 * time.Minute)
-		for {
-			<-ticker
+		for range ticker {
+			gocache.Cache.Flush()
 			if err := gocache.LoadDataIntoCache(db); err != nil {
 				log.Warn("failed to update cache")
 			} else {
@@ -95,26 +59,10 @@ func main() {
 	router.Handle("/banner", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(S.GetPostBannersHandler)))
 	router.Handle("/banner/{id}", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(S.PatchDeleteBannerHandler)))
 
-	err = http.ListenAndServe(":8085", router)
+	address := cfg.HTTPServer.Address
+	err = http.ListenAndServe(address, router)
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
 
-}
-
-func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-	switch env {
-	case envLocal:
-		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	case envDev:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	case envProd:
-		log = slog.New(
-			slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	}
-
-	return log
 }
