@@ -126,7 +126,6 @@ func GetAllBanners(tagID, featureID, limit, offset string, db *sql.DB) ([]*stora
 			bannerMap[banner.Id] = newBanner
 		}
 	}
-
 	banners := make([]*storage.AllBanner, 0, len(bannerMap))
 	for _, b := range bannerMap {
 		banners = append(banners, b)
