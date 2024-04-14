@@ -80,7 +80,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		RETURNING id;
 	`
 
-	for id := 1; id <= storage.NumberBanners; id++ {
+	for id := 1; id < storage.NumberBanners; id++ {
 		content := storage.BannerContent{
 			Title: "some_title" + strconv.Itoa(id),
 			Text:  "some_text" + strconv.Itoa(id),
@@ -138,7 +138,7 @@ func UpdateStorage(storagePath string) (*Storage, error) {
 		RETURNING id;
 	`
 
-	for id := 1; id <= storage.NumberBanners*2; id++ {
+	for id := 1; id < storage.NumberBanners; id++ {
 		value := "tag" + strconv.Itoa(id)
 		_, err := db.Exec(sqlStatementTags, value)
 		if err != nil {
@@ -163,7 +163,7 @@ func CheckPostgresDB(db *sql.DB, cfg *config.Config, log *slog.Logger) error {
 	}
 
 	if count == 4 {
-		log.Info("database exist")
+		log.Info("database exists")
 	} else {
 		storage, err := New(cfg.Storage)
 		if err != nil {

@@ -56,10 +56,16 @@ func InsertBanner(data map[string]interface{}, db *sql.DB) (int, error) {
 	var tagIDArray []int
 	for _, tagID := range tagIDs {
 		tagIDFloat, ok := tagID.(float64)
+		tagIDInt := int(tagIDFloat)
 		if !ok || tagIDFloat <= 0 {
 			return 0, fmt.Errorf("tag_id is not an integer or below zero")
 		}
 		tagIDArray = append(tagIDArray, int(tagIDFloat))
+		check, err := getters.CheckBannerByTagFeature(tagIDInt, intValue, maxID, db)
+		if check || err != nil {
+			return 0, fmt.Errorf("may cause duplicates")
+		}
+
 	}
 
 	now := time.Now()

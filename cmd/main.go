@@ -15,7 +15,6 @@ import (
 )
 
 func main() {
-
 	cfg := config.MustLoad()
 	log := logger.SetupLogger(cfg.Env)
 
@@ -59,8 +58,7 @@ func main() {
 	router.Handle("/banner", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(S.GetPostBannersHandler)))
 	router.Handle("/banner/{id}", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(S.PatchDeleteBannerHandler)))
 
-	address := cfg.HTTPServer.Address
-	err = http.ListenAndServe(address, router)
+	err = http.ListenAndServe("0.0.0.0:8085", router)
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}

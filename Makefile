@@ -1,7 +1,6 @@
 GO=go
 
-all:
-	FORCE
+all: docker_compose
 
 compile:
 	export DB_HOST=localhost; \
@@ -17,3 +16,6 @@ docker_compose:
 
 docker_compose_up:
 	sudo docker-compose up main
+
+test:
+	go test -v ./tests
