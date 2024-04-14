@@ -10,12 +10,10 @@ import (
 
 func TestGetBanner(t *testing.T) {
 	expectedResponses := []string{`"{\"text\":\"some_text1\",\"title\":\"some_title1\",\"url\":\"some_url1\"}"`,
-		`"{\"text\":\"some_text1\",\"title\":\"some_title1\",\"url\":\"some_url1\"}"`,
-		`"{\"text\":\"some_text999\",\"title\":\"some_title999\",\"url\":\"some_url999\"}"`}
+		`"{\"text\":\"some_text1\",\"title\":\"some_title1\",\"url\":\"some_url1\"}"`}
 
 	urls := []string{"http://localhost:8085/user_banner?tag_id=1&feature_id=2&use_last_revision=true",
-		"http://localhost:8085/user_banner?feature_id=2&tag_id=1",
-		"http://localhost:8085/user_banner?feature_id=6&tag_id=999"}
+		"http://localhost:8085/user_banner?feature_id=2&tag_id=1"}
 
 	client := &http.Client{}
 

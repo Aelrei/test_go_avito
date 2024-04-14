@@ -2,7 +2,7 @@ version: '3.8'
 services:
   db:
     #    restart: always
-    image: postgres:latest
+    image: postgres:16.2
     volumes:
       - ./.database/postgres/data:/var/lib/postgresql/data
     environment:
