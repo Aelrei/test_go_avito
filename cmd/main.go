@@ -51,12 +51,12 @@ func main() {
 		}
 	}()
 
-	S := handlers.New(db)
+	handle := handlers.New(db)
 	router := http.NewServeMux()
 
-	router.Handle("/user_banner", accessHTTP.AuthMiddlewareUserAdmin(http.HandlerFunc(S.GetUserBannerHandler)))
-	router.Handle("/banner", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(S.GetPostBannersHandler)))
-	router.Handle("/banner/{id}", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(S.PatchDeleteBannerHandler)))
+	router.Handle("/user_banner", accessHTTP.AuthMiddlewareUserAdmin(http.HandlerFunc(handle.GetUserBannerHandler)))
+	router.Handle("/banner", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(handle.GetPostBannersHandler)))
+	router.Handle("/banner/{id}", accessHTTP.AuthMiddlewareAdmin(http.HandlerFunc(handle.PatchDeleteBannerHandler)))
 
 	err = http.ListenAndServe("0.0.0.0:8085", router)
 	if err != nil {
